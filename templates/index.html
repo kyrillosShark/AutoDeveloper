@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Meta tags and page title -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Online Compiler Console</title>
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
+    
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    
+    <!-- Merged CSS Styles -->
+    <style>
+        /* Root Variables */
+        :root {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #252525;
+            --bg-tertiary: #2d2d2d;
+            --accent-primary: #61afef;
+            --accent-secondary: #c678dd;
+            --text-primary: #abb2bf;
+            --text-secondary: #5c6370;
+            --success-color: #98c379;
+            --error-color: #e06c75;
+            --warning-color: #e5c07b;
+            --border-color: #3e4451;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+            --side-menu-width: 300px;
+        }
+        
+        /* Global Styles */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Roboto', Arial, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow: hidden; /* Prevent scrollbars */
+        }
+        
+        #app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        header {
+            background-color: var(--bg-secondary);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--box-shadow);
+            position: relative; /* For positioning toggle button */
+            flex-shrink: 0; /* Prevent header from shrinking */
+        }
+        
+        #logo {
+            display: flex;
+            align-items: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        #logo i {
+            margin-right: 0.5rem;
+            color: var(--accent-primary);
+        }
+        
+        nav select {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        nav select:hover {
+            background-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+        
+        main {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Split.js container for main layout */
+        #main-split {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+        
+        #editor-container {
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-secondary);
+            border-radius: 8px;
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+        }
+        
+        #tabs {
+            display: flex;
+            background-color: var(--bg-tertiary);
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        
+        .tab {
+            padding: 0.5rem 1rem;
+            background-color: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-radius: 4px;
+            margin-right: 0.5rem;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+        }
+        
+        .tab.active {
+            background-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            margin-left: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        #editor {
+            flex: 1;
+            overflow: auto;
+        }
+        
+        /* Panels Container */
+        #panels-container {
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-secondary);
+            border-radius: 8px;
+            box-shadow: var(--box-shadow);
+            overflow: hidden;
+        }
+        
+        /* Split.js Container for Output and Terminal */
+        #output-terminal-split {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        /* Panels within the split container */
+        #output-panel, #terminal-panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .panel-header {
+            background-color: var(--bg-tertiary);
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        
+        .panel-header h3 {
+            color: var(--accent-secondary);
+            margin: 0;
+        }
+        
+        #output-container, #terminal-container {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+            color: #ffffff;
+        }
+        
+        /* Output Content Styling */
+        #output-container img, #output-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+        
+        footer {
+            background-color: var(--bg-secondary);
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0; /* Prevent footer from shrinking */
+        }
+        
+        #controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        
+        .primary-btn, .secondary-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .primary-btn {
+            background-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+        
+        .secondary-btn {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        .primary-btn:hover, .secondary-btn:hover {
+            filter: brightness(1.2);
+        }
+        
+        #milo-prompt {
+            flex: 1;
+            padding: 0.5rem;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        /* Swap Panels Button Styling */
+        #swapPanels {
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        
+        #swapPanels:hover {
+            background-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            main {
+                flex-direction: column;
+            }
+        
+            #main-split {
+                flex-direction: column;
+            }
+        
+            /* Update cursor for horizontal split */
+            .gutter {
+                cursor: row-resize !important;
+            }
+        }
+        
+        /* Styles for the GUI overlay */
+        .gui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        .gui-overlay.hidden {
+            display: none;
+        }
+        
+        .gui-content {
+            position: relative;
+        }
+        
+        .gui-content img {
+            max-width: 90%;
+            max-height: 90%;
+            border: 1px solid #ccc;
+        }
+        
+        .close-overlay-btn {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #fff;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        /* Styles for Side Menu */
+        #side-menu {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: var(--side-menu-width);
+            height: 100%;
+            background-color: var(--bg-secondary);
+            box-shadow: -2px 0 5px rgba(0,0,0,0.5);
+            transition: right 0.3s ease;
+            z-index: 20;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        #side-menu.open {
+            right: 0;
+        }
+        
+        #side-menu h2 {
+            color: var(--accent-primary);
+            margin-top: 0;
+        }
+        
+        /* Toggle button for the side menu */
+        #side-menu-toggle {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 4px;
+            padding: 0.5rem;
+            cursor: pointer;
+            box-shadow: var(--box-shadow);
+            z-index: 30;
+            transition: background-color var(--transition);
+        }
+        
+        #side-menu-toggle:hover {
+            background-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+        
+        /* Ensure main content shifts when side menu is open (optional) */
+        main.shifted {
+            margin-right: var(--side-menu-width);
+            transition: margin-right 0.3s ease;
+        }
+        
+        /* Styles for Global Loading Spinner */
+        .loading-spinner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .loading-spinner.hidden {
+            display: none;
+        }
+        
+        /* Spinner Animation */
+        .spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid var(--accent-primary);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Spin Animation Keyframes */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Additional Styles for Milo Prompt */
+        .milo-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--accent-primary);
+            font-weight: bold;
+            font-size: 1rem;
+        }
+        
+        #milo-prompt {
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 4px;
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
+            resize: vertical;
+            font-family: 'Roboto', Arial, sans-serif;
+            font-size: 1rem;
+            box-shadow: var(--box-shadow);
+            min-height: 100px;
+            transition: background-color var(--transition), color var(--transition);
+        }
+        
+        #milo-prompt::placeholder {
+            color: var(--text-secondary);
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+        
+        #milo-prompt:focus {
+            outline: none;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 2px var(--accent-primary);
+        }
+        
+        /* Split.js Gutter Styling */
+        .gutter {
+            background-color: var(--border-color);
+            background-repeat: no-repeat;
+            background-position: 50%;
+            cursor: col-resize;
+        }
+        
+        .gutter.gutter-vertical {
+            width: 100%;
+            height: 8px;
+            cursor: row-resize;
+        }
+        
+        .gutter:hover {
+            background-color: var(--accent-primary);
+        }
+    </style>
+</head>
+<body>
+    <!-- Toggle Button for Side Menu -->
+    <button id="side-menu-toggle"><i class="fas fa-bars"></i></button>
+    
+    <!-- Global Loading Spinner Overlay -->
+    <div id="global-loading-spinner" class="loading-spinner hidden">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Side Menu -->
+    <div id="side-menu" class="hidden">
+        <i class="fas fa-code"></i>
+        <h2>AutoDev Tool</h2>
+        
+        <!-- Label for the Milo Prompt -->
+        <label for="milo-prompt" class="milo-label">Milo Prompt</label>
+        
+        <!-- Textarea for Multi-line Input -->
+        <textarea id="milo-prompt" placeholder="Enter a script for AutoDev..." rows="5"></textarea>
+        
+        <button id="automateButton" class="secondary-btn"><i class="fas fa-robot"></i> Automate</button>
+    </div>
+
+    <div id="app-container">
+        <header>
+            <div id="logo">
+                <i class="fas fa-code"></i>
+                <span> Advanced IDE</span>
+            </div>
+            <nav>
+                <select id="language">
+                    <option value="python">Python</option>
+                    <option value="c++">C++</option>
+                </select>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Main Split Container -->
+            <div id="main-split">
+                <div id="editor-container">
+                    <div id="tabs">
+                        <!-- Dynamic tabs will be added here -->
+                    </div>
+                    <div id="editor"></div>
+                </div>
+
+                <!-- Panels Container -->
+                <div id="panels-container">
+                    <div id="output-terminal-split">
+                        <div id="output-panel">
+                            <div class="panel-header">
+                                <h3>Output</h3>
+                            </div>
+                            <div id="output-container">
+                                <!-- Output will be displayed here -->
+
+                                <!-- GUI Overlay -->
+                                <div id="gui-overlay" class="gui-overlay hidden">
+                                    <div class="gui-content">
+                                        <button id="close-overlay" class="close-overlay-btn">&times;</button>
+                                        <img id="gui-image" src="" alt="GUI Output">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="terminal-panel">
+                            <div class="panel-header">
+                                <h3>Terminal</h3>
+                            </div>
+                            <div id="terminal-container">
+                                <!-- Terminal will be initialized here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div id="controls">
+                <button id="runButton" class="primary-btn"><i class="fas fa-play"></i> Run Code</button>
+                <button id="newTabButton" class="secondary-btn"><i class="fas fa-file"></i> New File</button>
+                <!-- Export Program Button -->
+                <button id="downloadExecutableButton" class="primary-btn">
+                    <i class="fas fa-download"></i> Export Program
+                </button>
+
+                <!-- Swap Panels Button -->
+                <button id="swapPanels" class="secondary-btn"><i class="fas fa-exchange-alt"></i> Swap Panels</button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Include External Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.0/split.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.11/interact.min.js"></script>
+
+    <!-- Include Main JavaScript File -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- JavaScript for Side Menu Toggle -->
+    <script>
+        // Toggle Side Menu
+        const sideMenuToggle = document.getElementById('side-menu-toggle');
+        const sideMenu = document.getElementById('side-menu');
+        const appContainer = document.getElementById('app-container');
+
+        sideMenuToggle.addEventListener('click', (event) => {
+            event.stopPropagation(); // Prevent event from bubbling up
+            sideMenu.classList.toggle('open');
+            appContainer.classList.toggle('shifted');
+        });
+
+        // Close Side Menu when clicking outside (optional)
+        document.addEventListener('click', (event) => {
+            if (!sideMenu.contains(event.target) && !sideMenuToggle.contains(event.target)) {
+                sideMenu.classList.remove('open');
+                appContainer.classList.remove('shifted');
+            }
+        });
+    </script>
+
+    <!-- JavaScript for Split.js Resizable Panels -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize Split.js for main layout
+            Split(['#editor-container', '#panels-container'], {
+                sizes: [50, 50],
+                minSize: 200,
+                gutterSize: 8,
+                cursor: 'col-resize',
+                direction: 'horizontal',
+                gutter: function (index, direction) {
+                    const gutter = document.createElement('div');
+                    gutter.className = 'gutter gutter-' + direction;
+                    return gutter;
+                }
+            });
+
+            // Initialize Split.js for Output and Terminal
+            function initializeOutputTerminalSplit() {
+                const isMobile = window.innerWidth <= 768;
+                const direction = isMobile ? 'horizontal' : 'vertical';
+                const cursor = isMobile ? 'col-resize' : 'row-resize';
+
+                Split(['#output-panel', '#terminal-panel'], {
+                    sizes: [70, 30],
+                    minSize: 100,
+                    gutterSize: 8,
+                    direction: direction,
+                    cursor: cursor,
+                    gutter: function (index, direction) {
+                        const gutter = document.createElement('div');
+                        gutter.className = 'gutter gutter-' + direction;
+                        return gutter;
+                    }
+                });
+            }
+
+            initializeOutputTerminalSplit();
+
+            // Handle window resize to adjust Split.js direction
+            window.addEventListener('resize', () => {
+                const splitInstance = Split.getInstance(['#output-panel', '#terminal-panel']);
+                if (splitInstance) {
+                    splitInstance.destroy();
+                }
+                initializeOutputTerminalSplit();
+            });
+
+            // Swap Panels Functionality
+            document.getElementById('swapPanels').addEventListener('click', () => {
+                const outputPanel = document.getElementById('output-panel');
+                const terminalPanel = document.getElementById('terminal-panel');
+                const parent = document.getElementById('output-terminal-split');
+
+                // Swap the panels
+                parent.insertBefore(terminalPanel, outputPanel);
+
+                // Reinitialize Split.js to recognize the new order
+                const splitInstance = Split.getInstance(['#output-panel', '#terminal-panel']);
+                if (splitInstance) {
+                    splitInstance.destroy();
+                }
+                initializeOutputTerminalSplit();
+            });
+        });
+    </script>
+</body>
+</html>
