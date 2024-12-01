@@ -1,4 +1,4 @@
-# AI Code Generator and Executor
+# AutoDeveloper
 
 An AI-powered web application that generates, executes, and assesses code based on user-provided project descriptions. Leveraging OpenAI’s GPT models, this application supports multiple programming languages and provides an interactive interface for seamless code generation and execution.
 
