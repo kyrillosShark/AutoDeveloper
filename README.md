@@ -39,6 +39,10 @@ An AI-powered web application that generates, executes, and assesses code based 
 
 ## Demo
 
+
+https://github.com/user-attachments/assets/3ff72a18-14eb-4caa-b146-6bfa8f03c218
+
+
 *Coming soon…*
 
 ## Installation
